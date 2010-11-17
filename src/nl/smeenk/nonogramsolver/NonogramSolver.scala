@@ -19,8 +19,8 @@ object NonogramSolver {
       case clue :: restClues =>
         row match {
           case Black() :: _ =>
-            val front = row take clue
-            val back = row drop clue
+            val front = row.take(clue)
+            val back = row.drop(clue)
 
             front.length == clue &&
               front.forall { _ == Black() } &&
@@ -41,20 +41,33 @@ object NonogramSolver {
    * Returns a list of all the possible filled in rows
    */
   def findSolutions(row: Row, clues: Clues): List[Row] = {
+    def black(clue: Int, restClues: List[Int]) = {
+      placeClue(row, clue) match {
+        case None => Nil
+        case Some(newRow) =>
+          if (restClues.isEmpty) {
+            findSolutions(newRow.drop(clue), restClues).map { newRow.take(clue) ::: _ }
+          } else {
+            findSolutions(newRow.drop(clue + 1), restClues).map { newRow.take(clue + 1) ::: _ }
+          }
+      }
+    }
+
+    def white(row: Row, clues: List[Int]) = findSolutions(row, clues).map { White() :: _ }
+
     clues match {
       case clue :: restClues =>
         row match {
-          case Black() :: rest => placeClue(row, clue).toList
-          case White() :: rest => findSolutions(rest, clues).map { White() :: _ }
-          case Unknown() :: rest =>
-            placeClue(row, clue).toList ::: findSolutions(rest, restClues)
+          case Black() :: _ => black(clue, restClues)
+          case White() :: rest => white(rest, clues)
+          case Unknown() :: rest => black(clue, restClues) ::: white(rest, clues)
           case Nil => Nil
         }
       case Nil =>
-        row match {
-          case Black() :: rest => Nil
-          case _ :: rest => findSolutions(rest, Nil).map { White() :: _ }
-          case Nil => Nil
+        if (row.contains(Black())) {
+          Nil
+        } else {
+          row.map { _ => White() } :: Nil
         }
     }
   }
@@ -62,11 +75,11 @@ object NonogramSolver {
   /**
    * Returns a row with the clue placed if the placement is valid
    */
-  def placeClue(row: Row, clue: Int): Option[Row] =
+  def placeClue(row: Row, clue: Int): Option[Row] = {
     if (clue == 0) {
       row match {
         case Black() :: _ => None
-        case _ :: rest => Some(White() :: row)
+        case _ :: rest => Some(White() :: rest)
         case Nil => Some(row)
       }
     } else {
@@ -80,6 +93,7 @@ object NonogramSolver {
         case Nil => None
       }
     }
+  }
 }
 
 trait Box

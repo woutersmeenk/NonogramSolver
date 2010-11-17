@@ -32,16 +32,14 @@ object NonogramSolverSpec extends Properties("NonogramSolver") {
   val rows = Gen.listOf(boxes)
 
   property("check") = forAll(largeList) { list: List[Int] =>
-    classify(list.size == 0, "empty") {
-      classify(list.size > 10, "large", "small") {
-        val row = generateRow(list)
-        val clues = getOdds(list)
-        NonogramSolver.check(row, clues)
-      }
+    collect(list.size) {
+      val row = generateRow(list)
+      val clues = getOdds(list)
+      NonogramSolver.check(row, clues)
     }
   }
 
-  property("findSolutions") = forAll(rows, lists) { (row: Row, clues: List[Int]) =>
+  property("findSolutions mixed") = forAll(rows, lists) { (row: Row, clues: List[Int]) =>
     val rows = NonogramSolver.findSolutions(row, clues)
     rows.size > 0 ==> {
       collect(rows.size) {
@@ -53,7 +51,16 @@ object NonogramSolverSpec extends Properties("NonogramSolver") {
     }
   }
 
-  property("findSolutions2") = forAll(nums, lists) { (spaces: Int, clues: List[Int]) =>
+  property("findSolutions black or white") = forAll(largeList) { list: List[Int] =>
+    collect(list.size) {
+      val row = generateRow(list)
+      val clues = getOdds(list)
+      val rows = NonogramSolver.findSolutions(row, clues)
+      rows.size == 1 && rows.head == row
+    }
+  }
+
+  property("findSolutions unknowns") = forAll(nums, lists) { (spaces: Int, clues: List[Int]) =>
     val size = clues.sum + spaces + clues.size - 1
 
     val row = List.fill(size)(Unknown())

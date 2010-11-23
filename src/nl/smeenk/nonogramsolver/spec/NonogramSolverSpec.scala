@@ -1,13 +1,12 @@
 package nl.smeenk.nonogramsolver.spec
 
-import nl.smeenk.nonogramsolver.{ NonogramSolver, White, Black, Unknown }
-import nl.smeenk.nonogramsolver.NonogramSolver.Row
+import nl.smeenk.nonogramsolver.{ NonogramSolver, Row, Box, White, Black, Unknown }
 import org.scalacheck._
 import org.scalacheck.Prop._
 import org.scalacheck.Test.Params
 
 object NonogramSolverSpec extends Properties("NonogramSolver") {
-  def generateRow(cluesAndSpaces: List[Int], black: Boolean = false): Row = {
+  def generateRow(cluesAndSpaces: List[Int], black: Boolean = false): List[Box] = {
     cluesAndSpaces match {
       case clueOrSpace :: rest =>
         val box = if (black) Black() else White()
@@ -33,19 +32,20 @@ object NonogramSolverSpec extends Properties("NonogramSolver") {
 
   property("check") = forAll(largeList) { list: List[Int] =>
     collect(list.size) {
-      val row = generateRow(list)
+      val row = new Row(generateRow(list))
       val clues = getOdds(list)
-      NonogramSolver.check(row, clues)
+      row.check(clues)
     }
   }
 
-  property("findSolutions mixed") = forAll(rows, lists) { (row: Row, clues: List[Int]) =>
-    val rows = NonogramSolver.findSolutions(row, clues)
+  property("findSolutions mixed") = forAll(rows, lists) { (boxes: List[Box], clues: List[Int]) =>
+    val row = new Row(boxes)
+    val rows = row.findSolutions(clues)
     rows.size > 0 ==> {
       collect(rows.size) {
         rows.forall { outRow: Row =>
-          NonogramSolver.check(outRow, clues) &&
-            row.size == outRow.size
+          outRow.check(clues) &&
+            row.boxes.size == outRow.boxes.size
         }
       }
     }
@@ -53,9 +53,9 @@ object NonogramSolverSpec extends Properties("NonogramSolver") {
 
   property("findSolutions black or white") = forAll(largeList) { list: List[Int] =>
     collect(list.size) {
-      val row = generateRow(list)
+      val row = new Row(generateRow(list))
       val clues = getOdds(list)
-      val rows = NonogramSolver.findSolutions(row, clues)
+      val rows = row.findSolutions(clues)
       rows.size == 1 && rows.head == row
     }
   }
@@ -63,12 +63,12 @@ object NonogramSolverSpec extends Properties("NonogramSolver") {
   property("findSolutions unknowns") = forAll(nums, lists) { (spaces: Int, clues: List[Int]) =>
     val size = clues.sum + spaces + clues.size - 1
 
-    val row = List.fill(size)(Unknown())
-    val rows = NonogramSolver.findSolutions(row, clues)
+    val row = new Row(List.fill(size)(Unknown()))
+    val rows = row.findSolutions(clues)
     collect(rows.size) {
       rows.forall { outRow: Row =>
-        NonogramSolver.check(outRow, clues) &&
-          row.size == outRow.size
+        outRow.check(clues) &&
+          row.boxes.size == outRow.boxes.size
       }
     }
   }
